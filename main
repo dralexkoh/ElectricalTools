@@ -1,0 +1,735 @@
+import React, { useState } from 'react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+
+const EngineeringMCCTool = () => {
+  // More balanced scores - less extreme differences
+  const baseScores = {
+    withdrawable: [3, 3, 4, 5, 4, 4, 4, 4, 3], // Better cost, delivery scores
+    nonWithdrawable: [5, 4, 3, 2, 4, 4, 3, 4, 4]  // Still wins cost/delivery but closer
+  };
+
+  // More balanced criteria weights - reduce cost/delivery dominance
+  const baseCriteria = [
+    { name: 'Size (Compactness)', weight: 0.18 }, // Increased 
+    { name: 'Initial Cost', weight: 0.25 }, // Reduced from 30%
+    { name: 'Maintenance Cost', weight: 0.15 }, 
+    { name: 'Maintenance Flexibility', weight: 0.12 }, // Increased
+    { name: 'Reliability/Redundancy', weight: 0.10 }, // Increased 
+    { name: 'Environmental Durability', weight: 0.08 }, // Increased
+    { name: 'Safety Features', weight: 0.05 }, 
+    { name: 'Compliance with Standards', weight: 0.05 }, 
+    { name: 'Delivery Time/Availability', weight: 0.22 } // Reduced from 25%
+  ];
+
+  // Project context inputs
+  const [projectContext, setProjectContext] = useState({
+    projectPhase: 'planning',
+    budgetPressure: 'high',
+    scheduleConstraints: 'tight',
+    operationalCriticality: 'high'
+  });
+
+  // Technical assessment inputs
+  const [technicalContext, setTechnicalContext] = useState({
+    maintenanceAccess: 'difficult',
+    spaceConstraints: 'tight',
+    preferredBrand: 'any',
+    voltageLevel: '480V',
+    environmentalConditions: 'offshore',
+    redundancyNeeds: 'standard',
+    futureExpansion: 'likely',
+    integrationComplexity: 'standard',
+    arcFlashConcerns: 'high',
+    harmonicConsiderations: 'standard'
+  });
+
+  const [activeView, setActiveView] = useState('assessment');
+
+  // Calculate adjusted weights based on context
+  const getAdjustedWeights = () => {
+    let adjustments = [...baseCriteria.map(c => c.weight)];
+    
+    // PROJECT CONTEXT ADJUSTMENTS
+    if (projectContext.budgetPressure === 'critical') {
+      adjustments[1] += 0.15;
+      adjustments[2] -= 0.05;
+      adjustments[3] -= 0.05;
+      adjustments[8] -= 0.05;
+    } else if (projectContext.budgetPressure === 'high') {
+      adjustments[1] += 0.10;
+      adjustments[8] -= 0.02;
+    } else if (projectContext.budgetPressure === 'low') {
+      adjustments[1] -= 0.10;
+      adjustments[2] += 0.05;
+      adjustments[3] += 0.03;
+    }
+
+    if (projectContext.scheduleConstraints === 'critical') {
+      adjustments[8] += 0.20;
+      adjustments[1] -= 0.10;
+      adjustments[2] -= 0.05;
+    } else if (projectContext.scheduleConstraints === 'tight') {
+      adjustments[8] += 0.10;
+      adjustments[1] -= 0.05;
+    } else if (projectContext.scheduleConstraints === 'flexible') {
+      adjustments[8] -= 0.10;
+      adjustments[2] += 0.05;
+    }
+
+    if (projectContext.operationalCriticality === 'critical') {
+      adjustments[3] += 0.08;
+      adjustments[4] += 0.05;
+      adjustments[2] += 0.05;
+      adjustments[1] -= 0.08;
+    } else if (projectContext.operationalCriticality === 'high') {
+      adjustments[3] += 0.05;
+      adjustments[4] += 0.03;
+      adjustments[2] += 0.02;
+    } else if (projectContext.operationalCriticality === 'low') {
+      adjustments[1] += 0.05;
+      adjustments[3] -= 0.02;
+      adjustments[4] -= 0.02;
+    }
+
+    if (projectContext.projectPhase === 'urgent') {
+      adjustments[8] += 0.15;
+      adjustments[1] -= 0.05;
+    } else if (projectContext.projectPhase === 'emergency') {
+      adjustments[8] += 0.25;
+      adjustments[1] -= 0.15;
+      adjustments[0] -= 0.05;
+    }
+
+    // TECHNICAL ASSESSMENT ADJUSTMENTS
+    if (technicalContext.maintenanceAccess === 'very-difficult') {
+      adjustments[3] += 0.10;
+      adjustments[2] += 0.08;
+      adjustments[4] += 0.05;
+    } else if (technicalContext.maintenanceAccess === 'difficult') {
+      adjustments[3] += 0.06;
+      adjustments[2] += 0.04;
+    } else if (technicalContext.maintenanceAccess === 'easy') {
+      adjustments[3] -= 0.03;
+      adjustments[1] += 0.02;
+    }
+
+    if (technicalContext.spaceConstraints === 'extremely-tight') {
+      adjustments[0] += 0.15;
+      adjustments[1] -= 0.05;
+    } else if (technicalContext.spaceConstraints === 'tight') {
+      adjustments[0] += 0.08;
+    } else if (technicalContext.spaceConstraints === 'ample') {
+      adjustments[0] -= 0.05;
+      adjustments[3] += 0.03;
+    }
+
+    if (technicalContext.environmentalConditions === 'offshore') {
+      adjustments[5] += 0.05;
+      adjustments[3] += 0.04;
+      adjustments[4] += 0.03;
+    } else if (technicalContext.environmentalConditions === 'marine') {
+      adjustments[5] += 0.03;
+      adjustments[3] += 0.02;
+    }
+
+    if (technicalContext.redundancyNeeds === 'critical') {
+      adjustments[4] += 0.08;
+      adjustments[3] += 0.05;
+      adjustments[1] -= 0.05;
+    } else if (technicalContext.redundancyNeeds === 'high') {
+      adjustments[4] += 0.05;
+      adjustments[3] += 0.03;
+    }
+
+    if (technicalContext.futureExpansion === 'definite') {
+      adjustments[3] += 0.06;
+      adjustments[0] += 0.03;
+    } else if (technicalContext.futureExpansion === 'likely') {
+      adjustments[3] += 0.04;
+    }
+
+    if (technicalContext.arcFlashConcerns === 'critical') {
+      adjustments[6] += 0.05;
+      adjustments[3] += 0.03;
+    } else if (technicalContext.arcFlashConcerns === 'high') {
+      adjustments[6] += 0.03;
+      adjustments[3] += 0.02;
+    }
+
+    if (technicalContext.integrationComplexity === 'very-complex') {
+      adjustments[3] += 0.05;
+      adjustments[8] += 0.03;
+    } else if (technicalContext.integrationComplexity === 'complex') {
+      adjustments[3] += 0.03;
+    }
+
+    if (technicalContext.preferredBrand !== 'any') {
+      adjustments[8] += 0.05;
+      adjustments[1] += 0.03;
+    }
+
+    // Normalize weights
+    const total = adjustments.reduce((sum, weight) => sum + Math.max(0.01, weight), 0);
+    return adjustments.map(weight => Math.max(0.01, weight) / total);
+  };
+
+  const calculatePersonalizedScore = (scoreArray) => {
+    const adjustedWeights = getAdjustedWeights();
+    return scoreArray.reduce((total, score, index) => {
+      return total + (score * adjustedWeights[index]);
+    }, 0);
+  };
+
+  const withdrawableScore = calculatePersonalizedScore(baseScores.withdrawable);
+  const nonWithdrawableScore = calculatePersonalizedScore(baseScores.nonWithdrawable);
+  const winner = withdrawableScore > nonWithdrawableScore ? 'Withdrawable' : 'Non-Withdrawable';
+  const difference = Math.abs(withdrawableScore - nonWithdrawableScore);
+  const adjustedWeights = getAdjustedWeights();
+
+  const updateProjectContext = (field, value) => {
+    setProjectContext(prev => ({ ...prev, [field]: value }));
+  };
+
+  const updateTechnicalContext = (field, value) => {
+    setTechnicalContext(prev => ({ ...prev, [field]: value }));
+  };
+
+  const comparisonData = baseCriteria.map((criterion, index) => ({
+    name: criterion.name.replace('/', '/\n'),
+    Withdrawable: baseScores.withdrawable[index],
+    'Non-Withdrawable': baseScores.nonWithdrawable[index],
+    weight: adjustedWeights[index]
+  }));
+
+  const getRecommendationReason = () => {
+    const reasons = [];
+    
+    if (projectContext.budgetPressure === 'critical' && winner === 'Non-Withdrawable') {
+      reasons.push('Critical budget constraints favor lower initial cost');
+    }
+    if (projectContext.scheduleConstraints === 'critical' && winner === 'Non-Withdrawable') {
+      reasons.push('Critical schedule pressure requires faster delivery');
+    }
+    if (projectContext.projectPhase === 'emergency' && winner === 'Non-Withdrawable') {
+      reasons.push('Emergency replacement needs immediate availability');
+    }
+    if (technicalContext.spaceConstraints === 'extremely-tight' && winner === 'Non-Withdrawable') {
+      reasons.push('Extremely tight space constraints require compact design');
+    }
+    if (technicalContext.maintenanceAccess === 'very-difficult' && winner === 'Withdrawable') {
+      reasons.push('Very difficult maintenance access requires maximum flexibility');
+    }
+    if (technicalContext.redundancyNeeds === 'critical' && winner === 'Withdrawable') {
+      reasons.push('Critical redundancy needs favor superior maintenance flexibility');
+    }
+    if (technicalContext.futureExpansion === 'definite' && winner === 'Withdrawable') {
+      reasons.push('Definite future expansion requires maximum flexibility');
+    }
+
+    return reasons.length > 0 ? reasons : ['Based on your specific project and technical requirements'];
+  };
+
+  const baseWithdrawableScore = baseScores.withdrawable.reduce((total, score, index) => 
+    total + (score * baseCriteria[index].weight), 0);
+  const baseNonWithdrawableScore = baseScores.nonWithdrawable.reduce((total, score, index) => 
+    total + (score * baseCriteria[index].weight), 0);
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-4">
+      <div className="max-w-7xl mx-auto">
+        {/* Header */}
+        <div className="bg-white rounded-lg shadow-lg mb-6 p-6 border-t-4 border-trident-darkblue" style={{borderTopColor: '#283C50'}}>
+          <div className="flex items-center mb-4">
+            <div className="w-8 h-8 rounded mr-3" style={{backgroundColor: '#32AA46'}}></div>
+            <h1 className="text-3xl font-bold text-gray-900">
+              Engineering MCC Decision Tool
+            </h1>
+          </div>
+          <p className="text-gray-600">
+            Project context + technical assessment for electrical engineers
+          </p>
+          <div className="mt-3 p-3 rounded-lg" style={{backgroundColor: '#F0F0F0', border: '1px solid #283C50'}}>
+            <p className="text-sm" style={{color: '#283C50'}}>
+              <strong>Two-Phase Assessment:</strong> First define your project constraints (budget, schedule), 
+              then technical requirements (maintenance, space, environment) for a comprehensive recommendation.
+            </p>
+          </div>
+        </div>
+
+        {/* Navigation */}
+        <div className="bg-white rounded-lg shadow-lg mb-6 p-2">
+          <div className="flex gap-2">
+            <button
+              onClick={() => setActiveView('assessment')}
+              className={`px-6 py-3 rounded-lg font-medium transition-colors ${
+                activeView === 'assessment' 
+                  ? 'text-white' 
+                  : 'text-gray-600 hover:bg-gray-100'
+              }`}
+              style={{
+                backgroundColor: activeView === 'assessment' ? '#283C50' : 'transparent'
+              }}
+            >
+              🔧 MCC Assessment Tool
+            </button>
+            <button
+              onClick={() => setActiveView('guidance')}
+              className={`px-6 py-3 rounded-lg font-medium transition-colors ${
+                activeView === 'guidance' 
+                  ? 'text-white' 
+                  : 'text-gray-600 hover:bg-gray-100'
+              }`}
+              style={{
+                backgroundColor: activeView === 'guidance' ? '#283C50' : 'transparent'
+              }}
+            >
+              📚 Guidance & Weight Factors
+            </button>
+          </div>
+        </div>
+
+        {activeView === 'assessment' && (
+          <>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+              {/* Project Context */}
+              <div className="bg-white rounded-lg shadow-lg p-6">
+                <h2 className="text-xl font-semibold text-gray-900 mb-4">
+                  📋 Project Context
+                </h2>
+                
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Budget Pressure 💰
+                    </label>
+                    <select
+                      value={projectContext.budgetPressure}
+                      onChange={(e) => updateProjectContext('budgetPressure', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500"
+                    >
+                      <option value="low">Low - Budget is flexible</option>
+                      <option value="medium">Medium - Some constraints</option>
+                      <option value="high">High - Tight budget</option>
+                      <option value="critical">Critical - Every dollar counts</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Schedule Pressure ⏰
+                    </label>
+                    <select
+                      value={projectContext.scheduleConstraints}
+                      onChange={(e) => updateProjectContext('scheduleConstraints', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500"
+                    >
+                      <option value="flexible">Flexible - No rush</option>
+                      <option value="normal">Normal - Standard timeline</option>
+                      <option value="tight">Tight - Fast delivery needed</option>
+                      <option value="critical">Critical - ASAP required</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Project Phase 📅
+                    </label>
+                    <select
+                      value={projectContext.projectPhase}
+                      onChange={(e) => updateProjectContext('projectPhase', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500"
+                    >
+                      <option value="planning">Planning Phase</option>
+                      <option value="urgent">Urgent Need</option>
+                      <option value="emergency">Emergency Replacement</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Operational Criticality ⚡
+                    </label>
+                    <select
+                      value={projectContext.operationalCriticality}
+                      onChange={(e) => updateProjectContext('operationalCriticality', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500"
+                    >
+                      <option value="low">Low - Non-essential systems</option>
+                      <option value="medium">Medium - Important operations</option>
+                      <option value="high">High - Critical operations</option>
+                      <option value="critical">Critical - Mission-critical systems</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              {/* Technical Assessment */}
+              <div className="bg-white rounded-lg shadow-lg p-6">
+                <h2 className="text-xl font-semibold text-gray-900 mb-4">
+                  🔧 Technical Assessment
+                </h2>
+                
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Maintenance Access 👷
+                    </label>
+                    <select
+                      value={technicalContext.maintenanceAccess}
+                      onChange={(e) => updateTechnicalContext('maintenanceAccess', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500"
+                    >
+                      <option value="easy">Easy - Daily access possible</option>
+                      <option value="moderate">Moderate - Weekly access</option>
+                      <option value="difficult">Difficult - Monthly/rare access</option>
+                      <option value="very-difficult">Very Difficult - Emergency only</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Available Space 📐
+                    </label>
+                    <select
+                      value={technicalContext.spaceConstraints}
+                      onChange={(e) => updateTechnicalContext('spaceConstraints', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500"
+                    >
+                      <option value="ample">Ample - No space concerns</option>
+                      <option value="moderate">Moderate - Some limitations</option>
+                      <option value="tight">Tight - Space is limited</option>
+                      <option value="extremely-tight">Extremely Tight - Every inch counts</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Preferred Brand 🏭
+                    </label>
+                    <select
+                      value={technicalContext.preferredBrand}
+                      onChange={(e) => updateTechnicalContext('preferredBrand', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500"
+                    >
+                      <option value="any">Any - No preference</option>
+                      <option value="abb">ABB</option>
+                      <option value="schneider">Schneider Electric</option>
+                      <option value="siemens">Siemens</option>
+                      <option value="ge">GE</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Environment 🌊
+                    </label>
+                    <select
+                      value={technicalContext.environmentalConditions}
+                      onChange={(e) => updateTechnicalContext('environmentalConditions', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500"
+                    >
+                      <option value="indoor">Indoor - Controlled environment</option>
+                      <option value="outdoor">Outdoor - Weather exposed</option>
+                      <option value="marine">Marine - Salt air exposure</option>
+                      <option value="offshore">Offshore - Harsh marine conditions</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Additional Technical Parameters */}
+            <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
+              <h2 className="text-xl font-semibold text-gray-900 mb-4">Additional Technical Considerations</h2>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Redundancy Needs 🔄
+                  </label>
+                  <select
+                    value={technicalContext.redundancyNeeds}
+                    onChange={(e) => updateTechnicalContext('redundancyNeeds', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500"
+                  >
+                    <option value="none">None - Single point OK</option>
+                    <option value="standard">Standard - Some backup</option>
+                    <option value="high">High - Multiple backups</option>
+                    <option value="critical">Critical - No single points</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Future Expansion 📈
+                  </label>
+                  <select
+                    value={technicalContext.futureExpansion}
+                    onChange={(e) => updateTechnicalContext('futureExpansion', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500"
+                  >
+                    <option value="unlikely">Unlikely - Static system</option>
+                    <option value="possible">Possible - May expand</option>
+                    <option value="likely">Likely - Will expand</option>
+                    <option value="definite">Definite - Expansion planned</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Arc Flash Concerns ⚠️
+                  </label>
+                  <select
+                    value={technicalContext.arcFlashConcerns}
+                    onChange={(e) => updateTechnicalContext('arcFlashConcerns', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500"
+                  >
+                    <option value="low">Low - Minimal risk</option>
+                    <option value="medium">Medium - Standard precautions</option>
+                    <option value="high">High - Significant concerns</option>
+                    <option value="critical">Critical - Maximum safety needed</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            {/* Results Summary */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+              <div className={`bg-white rounded-lg shadow-lg p-6 ${withdrawableScore > nonWithdrawableScore ? 'ring-2' : ''}`}
+                   style={{ringColor: withdrawableScore > nonWithdrawableScore ? '#32AA46' : 'transparent'}}>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">Withdrawable MCC</h3>
+                <div className="text-3xl font-bold" style={{color: '#325A78'}}>{withdrawableScore.toFixed(2)}</div>
+                <p className="text-sm text-gray-600">Your Weighted Score</p>
+                <p className="text-xs text-gray-500">Base: {baseWithdrawableScore.toFixed(2)}</p>
+              </div>
+              
+              <div className="bg-white rounded-lg shadow-lg p-6 flex items-center justify-center">
+                <div className="text-center">
+                  <div className="text-sm font-medium text-gray-600">RECOMMENDED</div>
+                  <div className={`text-xl font-bold`} style={{color: '#32AA46'}}>
+                    {winner}
+                  </div>
+                  <div className="text-sm text-gray-500">+{difference.toFixed(2)} advantage</div>
+                </div>
+              </div>
+              
+              <div className={`bg-white rounded-lg shadow-lg p-6 ${nonWithdrawableScore > withdrawableScore ? 'ring-2' : ''}`}
+                   style={{ringColor: nonWithdrawableScore > withdrawableScore ? '#32AA46' : 'transparent'}}>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">Non-Withdrawable MCC</h3>
+                <div className="text-3xl font-bold" style={{color: '#283C50'}}>{nonWithdrawableScore.toFixed(2)}</div>
+                <p className="text-sm text-gray-600">Your Weighted Score</p>
+                <p className="text-xs text-gray-500">Base: {baseNonWithdrawableScore.toFixed(2)}</p>
+              </div>
+
+              <div className="bg-white rounded-lg shadow-lg p-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">Key Weights</h3>
+                <div className="space-y-1 text-xs">
+                  <div>Cost: <span className="font-bold">{(adjustedWeights[1] * 100).toFixed(0)}%</span></div>
+                  <div>Delivery: <span className="font-bold">{(adjustedWeights[8] * 100).toFixed(0)}%</span></div>
+                  <div>Size: <span className="font-bold">{(adjustedWeights[0] * 100).toFixed(0)}%</span></div>
+                  <div>Maint Flex: <span className="font-bold">{(adjustedWeights[3] * 100).toFixed(0)}%</span></div>
+                </div>
+              </div>
+            </div>
+
+            {/* Detailed Comparison Chart */}
+            <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
+              <h2 className="text-xl font-semibold text-gray-900 mb-4">
+                Performance Comparison (Your Adjusted Weights Applied)
+              </h2>
+              <ResponsiveContainer width="100%" height={400}>
+                <BarChart data={comparisonData} margin={{ top: 20, right: 30, left: 20, bottom: 60 }}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis 
+                    dataKey="name" 
+                    angle={-45}
+                    textAnchor="end"
+                    height={100}
+                    fontSize={11}
+                  />
+                  <YAxis domain={[0, 5]} />
+                  <Tooltip 
+                    formatter={(value, name) => [value, name]}
+                    labelFormatter={(label) => {
+                      const index = comparisonData.findIndex(item => item.name === label);
+                      const weight = index >= 0 ? (comparisonData[index].weight * 100).toFixed(0) : '0';
+                      return `${label} (Your Weight: ${weight}%)`;
+                    }}
+                  />
+                  <Bar dataKey="Withdrawable" fill="#325A78" />
+                  <Bar dataKey="Non-Withdrawable" fill="#283C50" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* Engineering Recommendation */}
+            <div className="bg-white rounded-lg shadow-lg p-6">
+              <h2 className="text-xl font-semibold text-gray-900 mb-4">Engineering Recommendation</h2>
+              
+              <div className={`p-6 rounded-lg border-2`} 
+                   style={{
+                     backgroundColor: winner === 'Withdrawable' ? '#F0F0F0' : '#F0F0F0',
+                     borderColor: winner === 'Withdrawable' ? '#325A78' : '#283C50'
+                   }}>
+                <h3 className={`text-xl font-bold mb-3`} style={{color: winner === 'Withdrawable' ? '#325A78' : '#283C50'}}>
+                  {winner} MCC is recommended for your application
+                </h3>
+                
+                <p className={`text-lg mb-4`} style={{color: winner === 'Withdrawable' ? '#325A78' : '#283C50'}}>
+                  Final Score: <strong>{(winner === 'Withdrawable' ? withdrawableScore : nonWithdrawableScore).toFixed(2)}</strong>/5.00 
+                  <span className="ml-2 text-sm">({difference.toFixed(2)} point advantage)</span>
+                </p>
+
+                <div className={`mb-4`} style={{color: winner === 'Withdrawable' ? '#325A78' : '#283C50'}}>
+                  <p className="font-medium mb-2">Key engineering reasons for this recommendation:</p>
+                  <ul className="list-disc list-inside space-y-1">
+                    {getRecommendationReason().map((reason, index) => (
+                      <li key={index} className="text-sm">{reason}</li>
+                    ))}
+                  </ul>
+                </div>
+
+                <div className="mt-4 p-4 bg-white rounded" style={{backgroundColor: 'rgba(255,255,255,0.8)'}}>
+                  <p className="text-sm font-medium mb-2">Your Technical Profile Summary:</p>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
+                    <div><strong>Maintenance:</strong> {technicalContext.maintenanceAccess}</div>
+                    <div><strong>Space:</strong> {technicalContext.spaceConstraints}</div>
+                    <div><strong>Environment:</strong> {technicalContext.environmentalConditions}</div>
+                    <div><strong>Redundancy:</strong> {technicalContext.redundancyNeeds}</div>
+                    <div><strong>Budget:</strong> {projectContext.budgetPressure}</div>
+                    <div><strong>Schedule:</strong> {projectContext.scheduleConstraints}</div>
+                    <div><strong>Criticality:</strong> {projectContext.operationalCriticality}</div>
+                    <div><strong>Phase:</strong> {projectContext.projectPhase}</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </>
+        )}
+
+        {activeView === 'guidance' && (
+          <div className="space-y-6">
+            {/* Overview */}
+            <div className="bg-white rounded-lg shadow-lg p-6">
+              <h2 className="text-2xl font-bold text-gray-900 mb-4">📚 Engineering Guidance & Weight Factors</h2>
+              <p className="text-gray-600 mb-4">
+                This tool uses a weighted scoring system to evaluate withdrawable vs non-withdrawable MCC cubicles. 
+                Understanding how weights are adjusted based on your inputs helps you make informed decisions.
+              </p>
+              
+              <div className="rounded-lg p-4" style={{backgroundColor: '#F0F0F0', border: '1px solid #283C50'}}>
+                <h4 className="font-semibold mb-2" style={{color: '#283C50'}}>How It Works:</h4>
+                <ol className="list-decimal list-inside space-y-1 text-sm" style={{color: '#283C50'}}>
+                  <li>Base criteria weights reflect balanced project priorities (Cost: 25%, Delivery: 22%)</li>
+                  <li>Your project context and technical inputs adjust these weights dynamically</li>
+                  <li>Each MCC type is scored 1-5 on each criterion (fixed engineering assessment)</li>
+                  <li>Final recommendation is based on weighted total scores</li>
+                </ol>
+              </div>
+            </div>
+
+            {/* Base Criteria Explanation */}
+            <div className="bg-white rounded-lg shadow-lg p-6">
+              <h3 className="text-xl font-semibold text-gray-900 mb-4">Base Criteria & Scoring</h3>
+              
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse">
+                  <thead>
+                    <tr className="border-b-2">
+                      <th className="text-left p-3 font-semibold">Criterion</th>
+                      <th className="text-center p-3 font-semibold">Base Weight</th>
+                      <th className="text-center p-3 font-semibold text-blue-600">Withdrawable Score</th>
+                      <th className="text-center p-3 font-semibold text-red-600">Non-Withdrawable Score</th>
+                      <th className="text-left p-3 font-semibold">Engineering Rationale</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr className="border-b">
+                      <td className="p-3 font-medium">Size (Compactness)</td>
+                      <td className="text-center p-3">18%</td>
+                      <td className="text-center p-3 text-blue-600">3/5</td>
+                      <td className="text-center p-3 text-red-600">5/5</td>
+                      <td className="p-3 text-sm">Non-withdrawable is more compact due to fixed design, critical for offshore space constraints</td>
+                    </tr>
+                    <tr className="border-b">
+                      <td className="p-3 font-medium">Initial Cost</td>
+                      <td className="text-center p-3">25%</td>
+                      <td className="text-center p-3 text-blue-600">3/5</td>
+                      <td className="text-center p-3 text-red-600">4/5</td>
+                      <td className="p-3 text-sm">Withdrawable has higher upfront cost due to modular design, but gap is narrowing with modern designs</td>
+                    </tr>
+                    <tr className="border-b">
+                      <td className="p-3 font-medium">Maintenance Cost</td>
+                      <td className="text-center p-3">15%</td>
+                      <td className="text-center p-3 text-blue-600">4/5</td>
+                      <td className="text-center p-3 text-red-600">3/5</td>
+                      <td className="p-3 text-sm">Withdrawable reduces downtime and maintenance complexity, critical for remote locations</td>
+                    </tr>
+                    <tr className="border-b">
+                      <td className="p-3 font-medium">Delivery Time/Availability</td>
+                      <td className="text-center p-3">22%</td>
+                      <td className="text-center p-3 text-blue-600">3/5</td>
+                      <td className="text-center p-3 text-red-600">4/5</td>
+                      <td className="p-3 text-sm">Non-withdrawable typically faster to deliver, but withdrawable availability improving</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Common Scenarios */}
+            <div className="bg-white rounded-lg shadow-lg p-6">
+              <h3 className="text-xl font-semibold text-gray-900 mb-4">Common Engineering Scenarios</h3>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="p-4 border-2 rounded-lg" style={{borderColor: '#283C50', backgroundColor: '#F0F0F0'}}>
+                  <h4 className="font-bold mb-2" style={{color: '#283C50'}}>❌ Non-Withdrawable Wins When:</h4>
+                  <ul className="text-sm space-y-1" style={{color: '#283C50'}}>
+                    <li>• <strong>Emergency replacement</strong> - need it fast</li>
+                    <li>• <strong>Critical budget constraints</strong> - every dollar counts</li>
+                    <li>• <strong>Extremely tight space</strong> - platform real estate premium</li>
+                    <li>• <strong>Standard operations</strong> - non-critical applications</li>
+                    <li>• <strong>Easy maintenance access</strong> - onshore/accessible locations</li>
+                    <li>• <strong>No expansion plans</strong> - static system requirements</li>
+                  </ul>
+                  <div className="mt-3 p-2 rounded" style={{backgroundColor: 'rgba(40, 60, 80, 0.1)'}}>
+                    <p className="text-xs" style={{color: '#283C50'}}><strong>Typical Score Range:</strong> 3.6-4.2/5.0</p>
+                  </div>
+                </div>
+
+                <div className="p-4 border-2 rounded-lg" style={{borderColor: '#325A78', backgroundColor: '#F0F0F0'}}>
+                  <h4 className="font-bold mb-2" style={{color: '#325A78'}}>✅ Withdrawable Wins When:</h4>
+                  <ul className="text-sm space-y-1" style={{color: '#325A78'}}>
+                    <li>• <strong>Mission-critical systems</strong> - downtime = $$</li>
+                    <li>• <strong>Difficult maintenance access</strong> - offshore platforms</li>
+                    <li>• <strong>Flexible timeline</strong> - can wait for better solution</li>
+                    <li>• <strong>Future expansion planned</strong> - system will grow</li>
+                    <li>• <strong>High redundancy needs</strong> - no single points of failure</li>
+                    <li>• <strong>Arc flash concerns</strong> - safety during maintenance</li>
+                  </ul>
+                  <div className="mt-3 p-2 rounded" style={{backgroundColor: 'rgba(50, 90, 120, 0.1)'}}>
+                    <p className="text-xs" style={{color: '#325A78'}}><strong>Typical Score Range:</strong> 3.2-3.8/5.0</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Disclaimer Note */}
+        <div className="mt-8 bg-white rounded-lg shadow-lg p-4 border-l-4" style={{borderLeftColor: '#32AA46'}}>
+          <div className="flex items-center">
+            <div className="w-4 h-4 rounded mr-2" style={{backgroundColor: '#32AA46'}}></div>
+            <p className="text-sm text-gray-600">
+              <strong>Disclaimer:</strong> This tool provides engineering guidance based on industry best practices and typical project scenarios. 
+              All recommendations should be validated with detailed technical specifications, vendor consultations, and site-specific requirements. 
+              Trident Energy assumes no responsibility for decisions made solely based on this guidance tool.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default EngineeringMCCTool;
